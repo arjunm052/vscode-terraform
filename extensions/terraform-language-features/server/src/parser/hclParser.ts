@@ -198,24 +198,83 @@ export class HCLParser {
 			};
 		}
 
-		// Parse function calls: find_in_parent_folders("filename.hcl")
+		// Parse function calls: find_in_parent_folders("filename.hcl") or read_terragrunt_config(find_in_parent_folders("filename.hcl"))
 		const funcMatch = value.match(/([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
 		if (funcMatch) {
 			const funcName = funcMatch[1];
 			const args: HCLNode[] = [];
 
-			// Extract arguments from the function call
-			// Match: function_name("arg1", "arg2") or function_name()
-			const argsMatch = value.match(/\(([^)]*)\)/);
-			if (argsMatch && argsMatch[1].trim()) {
-				// Parse string arguments (simple case: single quoted string)
-				const stringArgMatch = argsMatch[1].match(/["']([^"']+)["']/);
-				if (stringArgMatch) {
+			// Extract arguments from the function call, handling nested parentheses
+			// Find the matching closing parenthesis by counting parentheses
+			let parenCount = 0;
+			let argStart = funcMatch[0].length - 1; // Position after opening paren
+			let argEnd = argStart;
+
+			for (let i = argStart; i < value.length; i++) {
+				if (value[i] === '(') parenCount++;
+				if (value[i] === ')') {
+					parenCount--;
+					if (parenCount === 0) {
+						argEnd = i;
+						break;
+					}
+				}
+			}
+
+			const argStr = value.substring(argStart + 1, argEnd).trim();
+
+			if (argStr) {
+				// Check if argument is a nested function call (e.g., find_in_parent_folders("filename.hcl"))
+				const nestedFuncMatch = argStr.match(/([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+				if (nestedFuncMatch) {
+					// Parse nested function call - find its closing paren
+					const nestedFuncName = nestedFuncMatch[1];
+					let nestedParenCount = 0;
+					let nestedArgStart = nestedFuncMatch[0].length - 1;
+					let nestedArgEnd = nestedArgStart;
+
+					for (let i = nestedArgStart; i < argStr.length; i++) {
+						if (argStr[i] === '(') nestedParenCount++;
+						if (argStr[i] === ')') {
+							nestedParenCount--;
+							if (nestedParenCount === 0) {
+								nestedArgEnd = i;
+								break;
+							}
+						}
+					}
+
+					const nestedArgStr = argStr.substring(nestedArgStart + 1, nestedArgEnd);
+					const nestedArgs: HCLNode[] = [];
+
+					// Extract string argument from nested function
+					const nestedStringArgMatch = nestedArgStr.match(/["']([^"']+)["']/);
+					if (nestedStringArgMatch) {
+						nestedArgs.push({
+							type: 'literal',
+							value: nestedStringArgMatch[1],
+							range: createRange(lineNum, charOffset + argStart + nestedArgStart + nestedStringArgMatch.index! + 1, lineNum, charOffset + argStart + nestedArgStart + nestedStringArgMatch.index! + nestedStringArgMatch[0].length)
+						});
+					}
+
+					// Create nested function call node
 					args.push({
-						type: 'literal',
-						value: stringArgMatch[1],
-						range: createRange(lineNum, charOffset + argsMatch.index! + 1, lineNum, charOffset + argsMatch.index! + stringArgMatch[0].length)
-					});
+						type: 'function_call',
+						name: nestedFuncName,
+						functionName: nestedFuncName,
+						arguments: nestedArgs,
+						range: createRange(lineNum, charOffset + argStart + 1, lineNum, charOffset + argStart + argStr.length + 1)
+					} as FunctionCallNode);
+				} else {
+					// Parse string arguments (simple case: single quoted string)
+					const stringArgMatch = argStr.match(/["']([^"']+)["']/);
+					if (stringArgMatch) {
+						args.push({
+							type: 'literal',
+							value: stringArgMatch[1],
+							range: createRange(lineNum, charOffset + argStart + stringArgMatch.index! + 1, lineNum, charOffset + argStart + stringArgMatch.index! + stringArgMatch[0].length)
+						});
+					}
 				}
 			}
 

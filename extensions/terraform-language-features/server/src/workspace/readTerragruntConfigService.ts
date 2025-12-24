@@ -52,6 +52,9 @@ export class ReadTerragruntConfigService {
 										const pathType = this.detectPathType(pathNode);
 										const filename = this.extractFilename(pathNode);
 
+										console.log(`[ReadTerragruntConfigService] Found read_terragrunt_config call: localName="${localName}", pathType="${pathType}", filename="${filename}"`);
+										console.log(`[ReadTerragruntConfigService] Path node type: ${pathNode.type}, value:`, pathNode);
+
 										calls.push({
 											localName,
 											pathValue: pathNode,
@@ -60,6 +63,8 @@ export class ReadTerragruntConfigService {
 											line: attr.range.start.line,
 											range: attr.range
 										});
+									} else {
+										console.log(`[ReadTerragruntConfigService] ⚠️ No path node found for read_terragrunt_config call: ${localName}`);
 									}
 								}
 							}
@@ -140,13 +145,19 @@ export class ReadTerragruntConfigService {
 		switch (call.pathType) {
 			case 'find_in_parent_folders':
 				if (call.filename) {
+					console.log(`[ReadTerragruntConfigService] Searching for "${call.filename}" in parent directories from: ${currentPath}`);
 					const foundFile = await FileReader.findInParentDirs(currentPath, call.filename);
 					if (foundFile) {
+						console.log(`[ReadTerragruntConfigService] ✅ Found file: ${foundFile}`);
 						return {
 							uri: foundFile,
 							source: `find_in_parent_folders("${call.filename}")`
 						};
+					} else {
+						console.log(`[ReadTerragruntConfigService] ❌ File "${call.filename}" not found in parent directories`);
 					}
+				} else {
+					console.log(`[ReadTerragruntConfigService] ❌ No filename extracted from path node`);
 				}
 				return { uri: null, source: 'not found' };
 

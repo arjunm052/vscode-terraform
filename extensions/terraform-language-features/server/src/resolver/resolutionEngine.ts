@@ -6,7 +6,6 @@
 import { WorkspaceManager } from '../workspace/workspaceManager';
 import { BaseResolver } from './resolvers/baseResolver';
 import { LocalsResolver } from './resolvers/localsResolver';
-import { DependencyResolver } from './resolvers/dependencyResolver';
 import { IncludeResolver } from './resolvers/includeResolver';
 import { EnvVarsResolver } from './resolvers/envVarsResolver';
 import { FunctionResolver } from './resolvers/functionResolver';
@@ -47,9 +46,8 @@ export class ResolutionEngine {
 		this.workspace = workspace;
 		this.resolvers = [
 			new LocalsResolver(workspace, this),
-			new DependencyResolver(workspace, this),
 			new IncludeResolver(workspace, this),
-			new InputsResolver(workspace, this), // Add inputs resolver
+			new InputsResolver(workspace, this),
 			new EnvVarsResolver(workspace, this),
 			new FunctionResolver(workspace, this)
 		];
@@ -62,6 +60,16 @@ export class ResolutionEngine {
 		expression: string,
 		context: ResolutionContext
 	): Promise<ResolutionResult> {
+		// Skip dependency expressions early - they are not supported for resolution
+		if (expression.startsWith('dependency.')) {
+			return {
+				value: null,
+				source: 'unsupported',
+				chain: [],
+				confidence: 'unknown'
+			};
+		}
+
 		console.log('[ResolutionEngine] Resolving expression:', expression);
 		console.log('[ResolutionEngine] Context:', context);
 
@@ -161,8 +169,6 @@ export class ResolutionEngine {
 		switch (category.toLowerCase()) {
 			case 'locals':
 				return 'local';
-			case 'dependencies':
-				return 'dependency';
 			case 'includes':
 				return 'include';
 			case 'env vars':
@@ -176,8 +182,6 @@ export class ResolutionEngine {
 		switch (type) {
 			case 'local':
 				return `local.${name}`;
-			case 'dependency':
-				return `dependency.${name}`;
 			case 'include':
 				return `include.${name}`;
 			default:

@@ -47,16 +47,23 @@ export class LocalsResolver extends BaseResolver {
 
 			// Check if firstPart is a read_terragrunt_config result
 			const includeCache = this.workspace.getIncludeCache();
+			console.log('[LocalsResolver] Looking for read_terragrunt_config cache for:', firstPart, 'in file:', context.currentUri);
 			const readConfigResult = includeCache.getReadTerragruntConfig(context.currentUri, firstPart);
 
 			if (readConfigResult) {
 				console.log('[LocalsResolver] ✅ Found read_terragrunt_config result for:', firstPart);
+				console.log('[LocalsResolver] Cached config has:', {
+					locals: Object.keys(readConfigResult.locals || {}),
+					inputs: Object.keys(readConfigResult.inputs || {}),
+					sourceUri: readConfigResult.sourceUri
+				});
 				console.log('[LocalsResolver] Resolving nested path:', remainingPath);
 
 				// Resolve the nested path from the cached config
 				const nestedValue = ValueExtractor.getNestedValue(readConfigResult, remainingPath);
 				if (nestedValue !== null && nestedValue !== undefined) {
-					console.log('[LocalsResolver] ✅ Found nested value:', nestedValue);
+					console.log('[LocalsResolver] ✅ Found nested value:', JSON.stringify(nestedValue).substring(0, 200));
+					console.log('[LocalsResolver] Value type:', typeof nestedValue, 'Is reference?', this.isReference(nestedValue));
 
 					chain.push({
 						type: 'found-in-read-config',
@@ -68,14 +75,13 @@ export class LocalsResolver extends BaseResolver {
 						}
 					});
 
-					// Check if the value is a reference that needs further resolution
-					// e.g., if variable_name = local.another_var, resolve that chain
-					// Also handle nested references like local.account_vars.locals.another_var
+					// Always try to resolve references, even if the value looks resolved
+					// The value might be a string reference like "local.another_var" that needs resolution
 					if (this.isReference(nestedValue)) {
 						console.log('[LocalsResolver] Value is a reference, resolving chain:', nestedValue);
 
 						// Create a context for resolving - use the read_terragrunt_config file as base
-						// but allow it to access includes/configs from the original file's context
+						// This allows resolving references within that file and its includes
 						const nestedContext: ResolutionContext = {
 							currentUri: readConfigResult.sourceUri,
 							resolutionStack: context.resolutionStack || []
@@ -96,8 +102,11 @@ export class LocalsResolver extends BaseResolver {
 
 						nestedContext.resolutionStack!.push(resolutionKey);
 
-						// Recursively resolve the reference
+						// Recursively resolve the reference using the resolution engine
+						// This will handle cross-file references, includes, etc.
 						const nestedResult = await this.engine.resolve(nestedValue, nestedContext);
+
+						console.log('[LocalsResolver] Resolved reference result:', JSON.stringify(nestedResult.value).substring(0, 200));
 
 						// Merge chains - add the resolution steps
 						chain.push({
@@ -120,13 +129,33 @@ export class LocalsResolver extends BaseResolver {
 						};
 					}
 
-					// Also check if value is an object/array that might contain references
+					// Check if value is an object/array that might contain references
 					if (typeof nestedValue === 'object' && nestedValue !== null) {
 						// Check if any nested property is a reference
 						const hasNestedReference = this.hasNestedReference(nestedValue);
 						if (hasNestedReference) {
-							console.log('[LocalsResolver] Value contains nested references, resolving...');
-							const resolvedValue = await this.resolveNestedReferences(nestedValue, readConfigResult.sourceUri, context);
+							console.log('[LocalsResolver] Value contains nested references, resolving recursively...');
+
+							// Create proper context for resolving nested references
+							// Use the read_terragrunt_config file as the base URI
+							const nestedContext: ResolutionContext = {
+								currentUri: readConfigResult.sourceUri,
+								resolutionStack: context.resolutionStack || []
+							};
+
+							const resolvedValue = await this.resolveNestedReferences(nestedValue, readConfigResult.sourceUri, nestedContext);
+							console.log('[LocalsResolver] Resolved nested references result:', JSON.stringify(resolvedValue).substring(0, 200));
+
+							chain.push({
+								type: 'resolved-nested-references',
+								description: `Resolved nested references in ${remainingPath}`,
+								location: {
+									uri: readConfigResult.sourceUri,
+									line: 0,
+									character: 0
+								}
+							});
+
 							return {
 								value: resolvedValue,
 								source: readConfigResult.sourceUri,
@@ -137,7 +166,8 @@ export class LocalsResolver extends BaseResolver {
 						}
 					}
 
-					// Value is already resolved, return it
+					// Value is already resolved (no references found), return it
+					console.log('[LocalsResolver] Value is fully resolved, returning:', JSON.stringify(nestedValue).substring(0, 200));
 					return {
 						value: nestedValue,
 						source: readConfigResult.sourceUri,
@@ -147,6 +177,10 @@ export class LocalsResolver extends BaseResolver {
 					};
 				} else {
 					console.log('[LocalsResolver] ❌ Nested path not found in read_terragrunt_config result');
+					console.log('[LocalsResolver] Available paths in cached config:', {
+						locals: Object.keys(readConfigResult.locals || {}),
+						inputs: Object.keys(readConfigResult.inputs || {})
+					});
 				}
 			}
 		}
@@ -162,6 +196,38 @@ export class LocalsResolver extends BaseResolver {
 
 		if (currentFileLocals[localName]) {
 			console.log('[LocalsResolver] ✅ Found in current file!', currentFileLocals[localName]);
+
+			// Check if this local is a read_terragrunt_config result
+			const includeCache = this.workspace.getIncludeCache();
+			const readConfigResult = includeCache.getReadTerragruntConfig(context.currentUri, localName);
+
+			if (readConfigResult) {
+				console.log('[LocalsResolver] ✅ Local is a read_terragrunt_config result, returning cached config');
+				chain.push({
+					type: 'found-in-read-config',
+					description: `Found read_terragrunt_config("${localName}")`,
+					location: {
+						uri: context.currentUri,
+						line: currentFileLocals[localName].line || 0,
+						character: 0
+					}
+				});
+				// Return the entire config object (same structure as ExtractedValues)
+				return {
+					value: {
+						locals: readConfigResult.locals || {},
+						inputs: readConfigResult.inputs || {},
+						variables: readConfigResult.variables || {},
+						attributes: readConfigResult.attributes || {}
+					},
+					source: readConfigResult.sourceUri,
+					chain,
+					confidence: 'exact',
+					resolvedPath: readConfigResult.resolvedPath
+				};
+			}
+
+			// Not a read_terragrunt_config, return the value as-is
 			chain.push({
 				type: 'found-in-current-file',
 				description: `Found in ${context.currentUri}`,
@@ -404,11 +470,25 @@ export class LocalsResolver extends BaseResolver {
 		visited.add(obj);
 
 		if (this.isReference(obj)) {
+			console.log('[LocalsResolver] Resolving nested reference:', obj, 'in context:', sourceUri);
+
+			// Use the provided context, but ensure currentUri is set correctly
 			const nestedContext: ResolutionContext = {
 				currentUri: sourceUri,
 				resolutionStack: context.resolutionStack || []
 			};
+
+			// Prevent infinite recursion
+			const resolutionKey = `${sourceUri}:${obj}`;
+			if (nestedContext.resolutionStack!.includes(resolutionKey)) {
+				console.log('[LocalsResolver] ⚠️ Circular reference in nested resolution:', resolutionKey);
+				return `[Circular: ${obj}]`;
+			}
+
+			nestedContext.resolutionStack!.push(resolutionKey);
+
 			const result = await this.engine.resolve(obj, nestedContext);
+			console.log('[LocalsResolver] Resolved nested reference result:', JSON.stringify(result.value).substring(0, 100));
 			return result.value;
 		}
 

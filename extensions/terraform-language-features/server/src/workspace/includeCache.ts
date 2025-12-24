@@ -123,12 +123,22 @@ export class IncludeCache {
 	 * Get cached read_terragrunt_config values for a specific local name
 	 */
 	getReadTerragruntConfig(fileUri: string, localName: string): CachedIncludeValues | undefined {
+		console.log(`[IncludeCache] Looking for read_terragrunt_config "${localName}" in file: ${fileUri}`);
 		const fileCache = this.readConfigCache.get(fileUri);
 		if (!fileCache) {
+			console.log(`[IncludeCache] ❌ No cache found for file: ${fileUri}`);
+			console.log(`[IncludeCache] Available cached files:`, Array.from(this.readConfigCache.keys()));
 			return undefined;
 		}
 
-		return fileCache.get(localName);
+		const cached = fileCache.get(localName);
+		if (!cached) {
+			console.log(`[IncludeCache] ❌ No cache found for local "${localName}" in file: ${fileUri}`);
+			console.log(`[IncludeCache] Available locals in cache:`, Array.from(fileCache.keys()));
+		} else {
+			console.log(`[IncludeCache] ✅ Found cached read_terragrunt_config "${localName}"`);
+		}
+		return cached;
 	}
 
 	/**

@@ -28,6 +28,12 @@ export class HoverProvider {
 		const expression = document.getText(wordRange);
 		console.log('[HoverProvider] Found expression:', expression);
 
+		// Skip dependency expressions - they are not supported for resolution
+		if (expression.startsWith('dependency.')) {
+			console.log('[HoverProvider] Skipping dependency expression (not supported)');
+			return null;
+		}
+
 		// Request resolution from resolution engine
 		console.log('[HoverProvider] Calling resolution engine...');
 		const result = await this.resolutionEngine.resolve(expression, {
