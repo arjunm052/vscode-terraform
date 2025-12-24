@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./out",
+    "rootDir": ".",
+    "module": "Node16"
+  },
+  "include": [
+    "client/src/**/*",
+    "server/src/**/*"
+  ]
+}
+

@@ -1,0 +1,79 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinandert/sublime-jsonschema/master/schemas/json.schema.json",
+	"name": "Terragrunt",
+	"scopeName": "source.terragrunt",
+	"patterns": [
+		{
+			"include": "source.terraform"
+		},
+		{
+			"include": "#terragrunt-blocks"
+		},
+		{
+			"include": "#terragrunt-functions"
+		},
+		{
+			"include": "#terragrunt-expressions"
+		}
+	],
+	"repository": {
+		"terragrunt-blocks": {
+			"patterns": [
+				{
+					"begin": "\\b(include|dependency|terraform|inputs|generate|remote_state|skip)\\b",
+					"beginCaptures": {
+						"1": {
+							"name": "keyword.control.terragrunt"
+						}
+					},
+					"end": "\\{",
+					"endCaptures": {
+						"0": {
+							"name": "punctuation.definition.block.begin.terragrunt"
+						}
+					},
+					"name": "meta.block.terragrunt",
+					"patterns": [
+						{
+							"match": "\\\"[^\\\"]+\\\"",
+							"name": "string.quoted.double.terragrunt"
+						},
+						{
+							"match": "[^\\s\\{]+",
+							"name": "entity.name.type.terragrunt"
+						}
+					]
+				}
+			]
+		},
+		"terragrunt-functions": {
+			"patterns": [
+				{
+					"match": "\\b(find_in_parent_folders|read_terragrunt_config|path_relative_to_include|path_relative_from_include|get_env|get_terraform_commands_that_need_vars|get_terraform_commands_that_need_input|get_terraform_commands_that_need_lock|get_terraform_commands_that_need_parallelism|get_terraform_cli_args|get_terraform_cli_args_after|get_terraform_cli_args_before|get_terraform_cli_args_after_hooks|get_terraform_cli_args_before_hooks|get_terraform_cli_args_after_init|get_terraform_cli_args_before_init|get_terraform_cli_args_after_plan|get_terraform_cli_args_before_plan|get_terraform_cli_args_after_apply|get_terraform_cli_args_before_apply|get_terraform_cli_args_after_destroy|get_terraform_cli_args_before_destroy|get_terraform_cli_args_after_validate|get_terraform_cli_args_before_validate|get_terraform_cli_args_after_format|get_terraform_cli_args_before_format|get_terraform_cli_args_after_force_unlock|get_terraform_cli_args_before_force_unlock|get_terraform_cli_args_after_state|get_terraform_cli_args_before_state|get_terraform_cli_args_after_state_list|get_terraform_cli_args_before_state_list|get_terraform_cli_args_after_state_mv|get_terraform_cli_args_before_state_mv|get_terraform_cli_args_after_state_pull|get_terraform_cli_args_before_state_pull|get_terraform_cli_args_after_state_push|get_terraform_cli_args_before_state_push|get_terraform_cli_args_after_state_replace_provider|get_terraform_cli_args_before_state_replace_provider|get_terraform_cli_args_after_state_rm|get_terraform_cli_args_before_state_rm|get_terraform_cli_args_after_state_show|get_terraform_cli_args_before_state_show|get_terraform_cli_args_after_taint|get_terraform_cli_args_before_taint|get_terraform_cli_args_after_untaint|get_terraform_cli_args_before_untaint|get_terraform_cli_args_after_workspace|get_terraform_cli_args_before_workspace|get_terraform_cli_args_after_workspace_delete|get_terraform_cli_args_before_workspace_delete|get_terraform_cli_args_after_workspace_list|get_terraform_cli_args_before_workspace_list|get_terraform_cli_args_after_workspace_new|get_terraform_cli_args_before_workspace_new|get_terraform_cli_args_after_workspace_select|get_terraform_cli_args_before_workspace_select|get_terraform_cli_args_after_workspace_show|get_terraform_cli_args_before_workspace_show)\\s*\\(",
+					"name": "support.function.terragrunt"
+				}
+			]
+		},
+		"terragrunt-expressions": {
+			"patterns": [
+				{
+					"match": "\\b(dependency|include)\\.",
+					"name": "variable.other.terragrunt"
+				},
+				{
+					"match": "\\bdependency\\.\\w+\\.outputs\\.",
+					"name": "variable.other.terragrunt.dependency"
+				},
+				{
+					"match": "\\binclude\\.\\w+\\.",
+					"name": "variable.other.terragrunt.include"
+				},
+				{
+					"match": "\\blocal\\.env_vars\\.",
+					"name": "variable.other.terragrunt.env"
+				}
+			]
+		}
+	}
+}
+

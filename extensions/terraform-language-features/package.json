@@ -1,0 +1,164 @@
+{
+  "name": "terraform-language-features",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "1.0.0",
+  "publisher": "vscode",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.77.0"
+  },
+  "icon": "icons/terraform.png",
+  "activationEvents": [
+    "onLanguage:terraform",
+    "onLanguage:terragrunt",
+    "onCommand:terraform.refreshVariables"
+  ],
+  "main": "./client/out/node/extension",
+  "browser": "./client/dist/browser/extension",
+  "capabilities": {
+    "virtualWorkspaces": true,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%terraform.workspaceTrust%"
+    }
+  },
+  "scripts": {
+    "compile": "npx gulp compile-extension:terraform-language-features-client compile-extension:terraform-language-features-server",
+    "watch": "npx gulp watch-extension:terraform-language-features-client watch-extension:terraform-language-features-server"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "terraform",
+        "aliases": [
+          "Terraform",
+          "terraform",
+          "tf"
+        ],
+        "extensions": [
+          ".tf",
+          ".tfvars"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/terraform-light.svg",
+          "dark": "./icons/terraform-dark.svg"
+        }
+      },
+      {
+        "id": "terragrunt",
+        "aliases": [
+          "Terragrunt",
+          "terragrunt"
+        ],
+        "extensions": [
+          ".hcl"
+        ],
+        "filenames": [
+          "terragrunt.hcl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "terraform",
+        "scopeName": "source.terraform",
+        "path": "./syntaxes/terraform.tmLanguage.json"
+      },
+      {
+        "language": "terragrunt",
+        "scopeName": "source.terragrunt",
+        "path": "./syntaxes/terragrunt.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "terraform",
+        "path": "./snippets/terraform.json"
+      },
+      {
+        "language": "terragrunt",
+        "path": "./snippets/terragrunt.json"
+      }
+    ],
+    "configuration": {
+      "id": "terraform",
+      "order": 20,
+      "type": "object",
+      "title": "Terraform",
+      "properties": {
+        "terraform.trace.server": {
+          "type": "string",
+          "scope": "window",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "%terraform.tracing.desc%"
+        },
+        "terraform.resolution.enabled": {
+          "type": "boolean",
+          "scope": "window",
+          "default": true,
+          "description": "%terraform.resolution.enabled.desc%"
+        },
+        "terraform.maxWorkspaceSize": {
+          "type": "number",
+          "default": 10000,
+          "description": "%terraform.maxWorkspaceSize.desc%"
+        }
+      }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "terraformVariables",
+          "name": "Terraform Variables",
+          "when": "terraformLanguageFeaturesEnabled"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "terraform.refreshVariables",
+        "title": "Refresh Variables",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "terraform.showResolutionChain",
+        "title": "Show Resolution Chain"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "terraform.refreshVariables",
+          "when": "view == terraformVariables",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0",
+    "vscode-languageserver": "^9.0.0",
+    "vscode-languageserver-textdocument": "^1.0.0",
+    "vscode-uri": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.x",
+    "@types/vscode": "^1.77.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode.git"
+  }
+}
+

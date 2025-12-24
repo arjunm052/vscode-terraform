@@ -1,0 +1,66 @@
+{
+	"Include Block": {
+		"prefix": "include",
+		"body": [
+			"include {",
+			"\tpath = find_in_parent_folders()",
+			"}"
+		],
+		"description": "Terragrunt include block"
+	},
+	"Dependency Block": {
+		"prefix": "dependency",
+		"body": [
+			"dependency \"${1:dependency_name}\" {",
+			"\tconfig_path = \"${2:../dependency_path}\"",
+			"\t$0",
+			"}"
+		],
+		"description": "Terragrunt dependency block"
+	},
+	"Terraform Block": {
+		"prefix": "terraform",
+		"body": [
+			"terraform {",
+			"\tsource = \"${1:terraform_source}\"",
+			"\t$0",
+			"}"
+		],
+		"description": "Terragrunt terraform block"
+	},
+	"Inputs Block": {
+		"prefix": "inputs",
+		"body": [
+			"inputs = {",
+			"\t$0",
+			"}"
+		],
+		"description": "Terragrunt inputs block"
+	},
+	"Remote State Block": {
+		"prefix": "remote_state",
+		"body": [
+			"remote_state {",
+			"\tbackend = \"${1:s3}\"",
+			"\tconfig = {",
+			"\t\t$0",
+			"\t}",
+			"}"
+		],
+		"description": "Terragrunt remote_state block"
+	},
+	"Generate Block": {
+		"prefix": "generate",
+		"body": [
+			"generate \"${1:file_name}\" {",
+			"\tpath = \"${2:file.tf}\"",
+			"\tif_exists = \"${3:overwrite_terragrunt}\"",
+			"\tcontents = <<EOF",
+			"\t$0",
+			"\tEOF",
+			"}"
+		],
+		"description": "Terragrunt generate block"
+	}
+}
+

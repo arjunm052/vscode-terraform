@@ -1,0 +1,9 @@
+{
+  "displayName": "Terraform Language Features",
+  "description": "Rich language support for Terraform and Terragrunt with intelligent variable resolution",
+  "terraform.workspaceTrust": "Terraform extension requires workspace trust for file system access and state file reading.",
+  "terraform.tracing.desc": "Traces the communication between VS Code and the Terraform language server.",
+  "terraform.resolution.enabled.desc": "Enable variable resolution engine for Terragrunt configurations.",
+  "terraform.maxWorkspaceSize.desc": "Maximum number of files to index in workspace."
+}
+

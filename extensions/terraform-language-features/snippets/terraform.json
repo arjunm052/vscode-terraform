@@ -1,0 +1,63 @@
+{
+	"Resource Block": {
+		"prefix": "resource",
+		"body": [
+			"resource \"${1:resource_type}\" \"${2:resource_name}\" {",
+			"\t$0",
+			"}"
+		],
+		"description": "Terraform resource block"
+	},
+	"Data Source Block": {
+		"prefix": "data",
+		"body": [
+			"data \"${1:data_source_type}\" \"${2:data_source_name}\" {",
+			"\t$0",
+			"}"
+		],
+		"description": "Terraform data source block"
+	},
+	"Module Block": {
+		"prefix": "module",
+		"body": [
+			"module \"${1:module_name}\" {",
+			"\tsource = \"${2:module_source}\"",
+			"\t$0",
+			"}"
+		],
+		"description": "Terraform module block"
+	},
+	"Variable Block": {
+		"prefix": "variable",
+		"body": [
+			"variable \"${1:variable_name}\" {",
+			"\ttype = ${2:string}",
+			"\tdefault = ${3:null}",
+			"\tdescription = \"${4:Variable description}\"",
+			"\t$0",
+			"}"
+		],
+		"description": "Terraform variable block"
+	},
+	"Output Block": {
+		"prefix": "output",
+		"body": [
+			"output \"${1:output_name}\" {",
+			"\tvalue = ${2:value}",
+			"\tdescription = \"${3:Output description}\"",
+			"\t$0",
+			"}"
+		],
+		"description": "Terraform output block"
+	},
+	"Locals Block": {
+		"prefix": "locals",
+		"body": [
+			"locals {",
+			"\t$0",
+			"}"
+		],
+		"description": "Terraform locals block"
+	}
+}
+
