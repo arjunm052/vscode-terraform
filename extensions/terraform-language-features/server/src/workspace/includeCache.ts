@@ -14,6 +14,9 @@ export class IncludeCache {
 	// Map: currentFileUri -> Map<includeBlockName -> CachedIncludeValues>
 	private cache: Map<string, Map<string, CachedIncludeValues>> = new Map();
 
+	// Map: currentFileUri -> Map<localName -> CachedIncludeValues> for read_terragrunt_config results
+	private readConfigCache: Map<string, Map<string, CachedIncludeValues>> = new Map();
+
 	/**
 	 * Cache include values for a file
 	 */
@@ -87,6 +90,53 @@ export class IncludeCache {
 	hasCachedIncludes(fileUri: string): boolean {
 		const fileCache = this.cache.get(fileUri);
 		return fileCache !== undefined && fileCache.size > 0;
+	}
+
+	/**
+	 * Cache read_terragrunt_config values for a file
+	 */
+	cacheReadTerragruntConfig(
+		fileUri: string,
+		localName: string,
+		values: ExtractedValues,
+		sourceUri: string,
+		resolvedPath: string
+	): void {
+		console.log(`[IncludeCache] Caching read_terragrunt_config "${localName}" for file: ${fileUri}`);
+		console.log(`[IncludeCache] Source URI: ${sourceUri}, Resolved path: ${resolvedPath}`);
+
+		if (!this.readConfigCache.has(fileUri)) {
+			this.readConfigCache.set(fileUri, new Map());
+		}
+
+		const fileCache = this.readConfigCache.get(fileUri)!;
+		fileCache.set(localName, {
+			...values,
+			sourceUri,
+			resolvedPath
+		});
+
+		console.log(`[IncludeCache] ✅ Cached read_terragrunt_config ${localName} with ${Object.keys(values.locals).length} locals, ${Object.keys(values.inputs).length} inputs`);
+	}
+
+	/**
+	 * Get cached read_terragrunt_config values for a specific local name
+	 */
+	getReadTerragruntConfig(fileUri: string, localName: string): CachedIncludeValues | undefined {
+		const fileCache = this.readConfigCache.get(fileUri);
+		if (!fileCache) {
+			return undefined;
+		}
+
+		return fileCache.get(localName);
+	}
+
+	/**
+	 * Clear read_terragrunt_config cache for a specific file
+	 */
+	clearReadConfig(fileUri: string): void {
+		console.log(`[IncludeCache] Clearing read_terragrunt_config cache for file: ${fileUri}`);
+		this.readConfigCache.delete(fileUri);
 	}
 }
 

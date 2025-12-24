@@ -31,6 +31,7 @@ import { DefinitionProvider } from './providers/definitionProvider';
 import { ReferencesProvider } from './providers/referencesProvider';
 import { DiagnosticsProvider } from './providers/diagnosticsProvider';
 import { IncludeService } from './workspace/includeService';
+import { ReadTerragruntConfigService } from './workspace/readTerragruntConfigService';
 import { ValueExtractor } from './workspace/valueExtractor';
 import { IncludeCache } from './workspace/includeCache';
 import { FileReader } from './utils/fileReader';
@@ -190,6 +191,7 @@ export class Server {
 		if (isHclFile || document.languageId === 'terragrunt') {
 			console.log('[Server] ✅ File is Terragrunt/HCL, pre-loading includes...');
 			await this.preloadIncludes(document, ast);
+			await this.preloadReadTerragruntConfig(document, ast);
 			console.log('[Server] ✅ Pre-loading complete');
 		} else {
 			console.log('[Server] ⚠️ File is NOT Terragrunt, skipping include pre-loading.');
@@ -283,6 +285,7 @@ export class Server {
 
 		// Clear existing cache for this file
 		this.workspaceManager.getIncludeCache().clear(document.uri);
+		this.workspaceManager.getIncludeCache().clearReadConfig(document.uri);
 
 		// Process each include block
 		for (const includeBlock of includeBlocks) {
@@ -328,6 +331,64 @@ export class Server {
 		}
 
 		console.log(`[Server] ✅ Finished pre-loading ${includeBlocks.length} include(s)`);
+	}
+
+	/**
+	 * Pre-load read_terragrunt_config() calls: detect calls, resolve paths, extract values, cache
+	 */
+	private async preloadReadTerragruntConfig(document: TextDocument, ast: any[]): Promise<void> {
+		console.log('[Server] 🔍 Pre-loading read_terragrunt_config calls for:', document.uri);
+
+		// Find all read_terragrunt_config calls in locals blocks
+		const readConfigCalls = ReadTerragruntConfigService.findReadTerragruntConfigCalls(ast);
+		console.log(`[Server] Found ${readConfigCalls.length} read_terragrunt_config call(s)`);
+
+		if (readConfigCalls.length === 0) {
+			return;
+		}
+
+		// Process each read_terragrunt_config call
+		for (const call of readConfigCalls) {
+			console.log(`[Server] Processing read_terragrunt_config "${call.localName}" (path type: ${call.pathType})`);
+
+			// Resolve file path
+			const resolutionResult = await ReadTerragruntConfigService.resolvePath(call, document.uri);
+
+			if (!resolutionResult.uri) {
+				console.log(`[Server] ⚠️ Could not resolve read_terragrunt_config "${call.localName}": ${resolutionResult.source}`);
+				continue;
+			}
+
+			console.log(`[Server] ✅ Resolved read_terragrunt_config "${call.localName}" to: ${resolutionResult.uri}`);
+
+			// Read and parse the file
+			const content = await FileReader.readFile(resolutionResult.uri);
+			if (!content) {
+				console.log(`[Server] ⚠️ Could not read file: ${resolutionResult.uri}`);
+				continue;
+			}
+
+			const configDocument = TextDocument.create(resolutionResult.uri, 'terragrunt', 1, content);
+			const configAst = await this.parser.parse(configDocument);
+
+			// Update workspace index with file AST
+			this.workspaceManager.updateDocument(resolutionResult.uri, configAst);
+
+			// Extract all values from the file
+			const extractedValues = ValueExtractor.extractAllValues(configAst);
+			console.log(`[Server] Extracted values for read_terragrunt_config "${call.localName}": ${Object.keys(extractedValues.locals).length} locals, ${Object.keys(extractedValues.inputs).length} inputs`);
+
+			// Cache the extracted values
+			this.workspaceManager.getIncludeCache().cacheReadTerragruntConfig(
+				document.uri,
+				call.localName,
+				extractedValues,
+				resolutionResult.uri,
+				resolutionResult.source
+			);
+		}
+
+		console.log(`[Server] ✅ Finished pre-loading ${readConfigCalls.length} read_terragrunt_config call(s)`);
 	}
 
 }
