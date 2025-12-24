@@ -25,7 +25,9 @@
   },
   "scripts": {
     "compile": "npx gulp compile-extension:terraform-language-features-client compile-extension:terraform-language-features-server",
-    "watch": "npx gulp watch-extension:terraform-language-features-client watch-extension:terraform-language-features-server"
+    "watch": "npx gulp watch-extension:terraform-language-features-client watch-extension:terraform-language-features-server",
+    "build": "bash build.sh",
+    "vscode:prepublish": "npm run build"
   },
   "categories": [
     "Programming Languages"
